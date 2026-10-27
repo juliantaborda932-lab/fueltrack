@@ -20,6 +20,11 @@ def registrar(motor, id_vehiculo, fecha, galones, precio_galon, valor_total, kil
               origen="MANUAL", correo_conductor=None):
     """Devuelve dict con ok, mensaje, rendimiento y alertas generadas."""
     r = {"ok": False, "mensaje": "", "rendimiento": None, "alertas": []}
+    # Si falta el total o el precio, se calcula con los otros dos datos
+    if valor_total <= 0 and galones > 0 and precio_galon > 0:
+        valor_total = round(galones * precio_galon)
+    elif precio_galon <= 0 and galones > 0 and valor_total > 0:
+        precio_galon = round(valor_total / galones, 2)
     if fecha > date.today():
         r["mensaje"] = "La fecha no puede ser futura."
         return r
