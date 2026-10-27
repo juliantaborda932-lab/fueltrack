@@ -1,0 +1,11 @@
+streamlit
+sqlalchemy
+psycopg2-binary
+pandas
+bcrypt
+pytesseract
+Pillow
+folium
+streamlit-folium
+streamlit-geolocation
+fpdf2
