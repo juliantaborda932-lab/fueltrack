@@ -1,0 +1,25 @@
+estacion,latitud,longitud,aliada,tipo_combustible,precio_galon
+Estación Aliada Laureles,6.2450,-75.5960,1,Corriente,16150
+Estación Aliada Laureles,6.2450,-75.5960,1,Extra,19250
+Estación Aliada Laureles,6.2450,-75.5960,1,Diésel,11050
+Estación Estadio,6.2560,-75.5880,0,Corriente,16290
+Estación Estadio,6.2560,-75.5880,0,Extra,19390
+Estación Estadio,6.2560,-75.5880,0,Diésel,11120
+Estación Centro,6.2518,-75.5636,0,Corriente,16080
+Estación Centro,6.2518,-75.5636,0,Extra,19190
+Estación Centro,6.2518,-75.5636,0,Diésel,10990
+Estación Aliada Belén,6.2300,-75.6030,1,Corriente,15990
+Estación Aliada Belén,6.2300,-75.6030,1,Extra,19100
+Estación Aliada Belén,6.2300,-75.6030,1,Diésel,10950
+Estación El Poblado,6.2088,-75.5670,0,Corriente,16390
+Estación El Poblado,6.2088,-75.5670,0,Extra,19490
+Estación El Poblado,6.2088,-75.5670,0,Diésel,11190
+Estación Robledo,6.2780,-75.5960,0,Corriente,16190
+Estación Robledo,6.2780,-75.5960,0,Extra,19290
+Estación Robledo,6.2780,-75.5960,0,Diésel,11060
+Estación Envigado,6.1700,-75.5850,0,Corriente,16250
+Estación Envigado,6.1700,-75.5850,0,Extra,19350
+Estación Envigado,6.1700,-75.5850,0,Diésel,11090
+Estación Bello,6.3370,-75.5580,0,Corriente,16050
+Estación Bello,6.3370,-75.5580,0,Extra,19150
+Estación Bello,6.3370,-75.5580,0,Diésel,10980
