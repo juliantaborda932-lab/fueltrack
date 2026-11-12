@@ -34,7 +34,7 @@ CREATE TABLE precios (
 );
 
 CREATE TABLE solicitudes_soporte (
-	radicado VARCHAR(12) NOT NULL, 
+	radicado VARCHAR(13) NOT NULL, 
 	id_usuario INTEGER NOT NULL, 
 	categoria VARCHAR(30) NOT NULL, 
 	descripcion TEXT NOT NULL, 

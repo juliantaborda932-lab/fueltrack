@@ -151,7 +151,7 @@ def pantalla_tanqueo():
         km = c2.number_input("Kilometraje actual", 0, 2_000_000, 0, step=1)
         gal = c1.number_input("Galones", 0.0, 100.0, float(t.galones or 0.0) if t else 0.0, step=0.1, format="%.3f")
         precio = c2.number_input("Precio por galón ($)", 0.0, 50000.0, float(t.precio_galon or 0.0) if t else 0.0, step=10.0)
-        total = st.number_input("Valor total pagado ($)", 0.0, 5_000_000.0,
+        total = st.number_input("Valor total pagado ($) — déjelo en 0 y se calcula: galones × precio", 0.0, 5_000_000.0,
                                 float(t.valor_total or 0.0) if t else 0.0, step=1000.0)
         if st.form_submit_button("Guardar tanqueo", type="primary", width="stretch"):
             r = tanqueos.registrar(motor, veh.id_vehiculo, fecha, gal, precio, total, km,
@@ -169,7 +169,7 @@ def pantalla_tanqueo():
 # ------------------------------------------------------------------ UI-05
 def pantalla_rendimiento():
     st.title("📈 Rendimiento y alertas")
-    etiqueta("UI-05", "RF-06 Calcular rendimiento · RF-07 Alerta de consumo · RF-08 Mantenimiento")
+    etiqueta("UI-05", "RF-06 Calcular rendimiento · RF-07 Alerta de consumo · RF-08 Mantenimiento · RF-13 Editar/eliminar tanqueo")
     veh = elegir_vehiculo("veh_rd")
     if veh is None:
         return
@@ -189,6 +189,32 @@ def pantalla_rendimiento():
     vista = df[["fecha", "kilometraje", "galones", "valor_total", "rendimiento_km_gal", "origen"]].copy()
     vista["valor_total"] = vista["valor_total"].map(pesos)
     st.dataframe(vista.iloc[::-1], hide_index=True, width="stretch")
+    with st.expander("✏️ Editar o eliminar un tanqueo (RF-13)"):
+        opciones = {f"{pd.to_datetime(r.fecha):%d/%m/%Y} · {r.kilometraje:,} km · {r.galones:.2f} gal".replace(",", "."): r
+                    for r in df.iloc[::-1].itertuples()}
+        t = opciones[st.selectbox("Tanqueo", list(opciones), key="tq_edit")]
+        with st.form(f"editar_{t.id_tanqueo}"):
+            c1, c2 = st.columns(2)
+            f_e = c1.date_input("Fecha", pd.to_datetime(t.fecha).date(), max_value=date.today(), format="DD/MM/YYYY")
+            km_e = c2.number_input("Kilometraje", 0, 2_000_000, int(t.kilometraje))
+            gal_e = c1.number_input("Galones", 0.0, 100.0, float(t.galones), format="%.3f")
+            pre_e = c2.number_input("Precio por galón ($)", 0.0, 50000.0, float(t.precio_galon))
+            tot_e = st.number_input("Valor total ($) — en 0 se calcula: galones × precio", 0.0, 5_000_000.0, float(t.valor_total))
+            confirmar = st.checkbox("Confirmo que quiero eliminar este tanqueo")
+            b1, b2 = st.columns(2)
+            if b1.form_submit_button("Guardar cambios", type="primary"):
+                ok, msg = tanqueos.editar(motor, t.id_tanqueo, f_e, gal_e, pre_e, tot_e, km_e)
+                (st.success if ok else st.error)(msg)
+                if ok:
+                    st.rerun()
+            if b2.form_submit_button("Eliminar tanqueo"):
+                if not confirmar:
+                    st.error("Marque la casilla de confirmación para eliminar.")
+                else:
+                    ok, msg = tanqueos.eliminar(motor, t.id_tanqueo)
+                    (st.success if ok else st.error)(msg)
+                    if ok:
+                        st.rerun()
     al = alertas.listar(motor, ss.usuario["id_usuario"])
     al = al[al["placa"] == veh.placa] if not al.empty else al
     st.subheader("Alertas")
@@ -293,7 +319,7 @@ def pantalla_premium():
 # ------------------------------------------------------------------ UI-09
 def pantalla_soporte():
     st.title("💬 Soporte")
-    etiqueta("UI-09", "RF-12 Solicitar soporte")
+    etiqueta("UI-09", "RF-12 Solicitar soporte y ver historial")
     with st.form("soporte", clear_on_submit=True):
         cat = st.selectbox("Categoría", soporte.CATEGORIAS)
         desc = st.text_area("Describa el problema")
@@ -303,6 +329,14 @@ def pantalla_soporte():
                 st.success(f"Solicitud registrada con el radicado **{msg}**. Estado: Abierta.")
             else:
                 st.error(msg)
+    hist = soporte.listar(motor, ss.usuario["id_usuario"])
+    st.subheader("Mis solicitudes")
+    if hist.empty:
+        st.info("Aún no ha enviado solicitudes.")
+    else:
+        hist["fecha"] = pd.to_datetime(hist["fecha"]).dt.strftime("%d/%m/%Y %H:%M")
+        hist.columns = ["Radicado", "Fecha", "Categoría", "Estado"]
+        st.dataframe(hist, hide_index=True, width="stretch")
 
 
 PAGINAS = {"Inicio": pantalla_inicio, "Mis vehículos": pantalla_vehiculos, "Registrar tanqueo": pantalla_tanqueo,

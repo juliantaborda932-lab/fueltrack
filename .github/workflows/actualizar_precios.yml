@@ -1,0 +1,18 @@
+# RNF-07: actualiza los precios todos los días a las 5:00 a. m. hora Colombia (10:00 UTC)
+name: Actualizar precios de combustible
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install sqlalchemy psycopg2-binary
+      - run: python actualizar_precios.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

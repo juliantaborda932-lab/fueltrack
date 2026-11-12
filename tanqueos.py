@@ -2,7 +2,7 @@
 from datetime import date
 
 import pandas as pd
-from sqlalchemy import insert, select, update
+from sqlalchemy import delete, insert, select, update
 
 import alertas
 from db import tanqueos, vehiculos
@@ -81,3 +81,55 @@ def registrar(motor, id_vehiculo, fecha, galones, precio_galon, valor_total, kil
             enviado = correo_conductor and alertas.enviar_correo(correo_conductor, "Mantenimiento pendiente", msg)
             r["alertas"].append(msg + (" Se envió un correo." if enviado else " (Correo no configurado en el prototipo.)"))
     return r
+
+
+# ------------------------------------------------------------------ RF-13 Editar o eliminar tanqueo
+def recalcular(con, id_vehiculo):
+    """Vuelve a calcular el rendimiento de todos los tanqueos del vehículo en orden de kilometraje."""
+    filas = con.execute(select(tanqueos.c.id_tanqueo, tanqueos.c.kilometraje, tanqueos.c.galones)
+                        .where(tanqueos.c.id_vehiculo == id_vehiculo).order_by(tanqueos.c.kilometraje)).all()
+    km_ant = None
+    for f in filas:
+        rend = calcular_rendimiento(km_ant, f.kilometraje, f.galones) if km_ant is not None else None
+        con.execute(update(tanqueos).where(tanqueos.c.id_tanqueo == f.id_tanqueo).values(rendimiento_km_gal=rend))
+        km_ant = f.kilometraje
+
+
+def editar(motor, id_tanqueo, fecha, galones, precio_galon, valor_total, kilometraje):
+    """Corrige un tanqueo. El kilometraje debe seguir concordando con las fechas de los demás tanqueos."""
+    if valor_total <= 0 and galones > 0 and precio_galon > 0:
+        valor_total = round(galones * precio_galon)
+    elif precio_galon <= 0 and galones > 0 and valor_total > 0:
+        precio_galon = round(valor_total / galones, 2)
+    if fecha > date.today():
+        return False, "La fecha no puede ser futura."
+    if not (0 < galones <= 100) or precio_galon <= 0 or valor_total <= 0:
+        return False, "Revise galones (0 a 100), precio y valor."
+    km = int(kilometraje)
+    with motor.begin() as con:
+        t = con.execute(select(tanqueos).where(tanqueos.c.id_tanqueo == id_tanqueo)).mappings().first()
+        if not t:
+            return False, "El tanqueo no existe."
+        otros = con.execute(select(tanqueos.c.fecha, tanqueos.c.kilometraje)
+                            .where((tanqueos.c.id_vehiculo == t["id_vehiculo"]) & (tanqueos.c.id_tanqueo != id_tanqueo))).all()
+        for o in otros:
+            f = pd.to_datetime(o.fecha).date()
+            if o.kilometraje == km:
+                return False, "Ya existe otro tanqueo con ese kilometraje."
+            if (o.kilometraje < km and f > fecha) or (o.kilometraje > km and f < fecha):
+                return False, (f"El kilometraje no concuerda con la fecha: el {f:%d/%m/%Y} "
+                               f"el vehículo tenía {o.kilometraje:,} km.".replace(",", "."))
+        con.execute(update(tanqueos).where(tanqueos.c.id_tanqueo == id_tanqueo).values(
+            fecha=fecha, galones=galones, precio_galon=precio_galon, valor_total=valor_total, kilometraje=km))
+        recalcular(con, t["id_vehiculo"])
+    return True, "Tanqueo actualizado. Se recalculó el rendimiento."
+
+
+def eliminar(motor, id_tanqueo):
+    with motor.begin() as con:
+        t = con.execute(select(tanqueos.c.id_vehiculo).where(tanqueos.c.id_tanqueo == id_tanqueo)).first()
+        if not t:
+            return False, "El tanqueo no existe."
+        con.execute(delete(tanqueos).where(tanqueos.c.id_tanqueo == id_tanqueo))
+        recalcular(con, t.id_vehiculo)
+    return True, "Tanqueo eliminado. Se recalculó el rendimiento."
