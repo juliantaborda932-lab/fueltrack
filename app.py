@@ -33,6 +33,15 @@ motor = motor_bd()
 ss = st.session_state
 ss.setdefault("usuario", None)
 ss.setdefault("pagina", "Inicio")
+
+
+def ir(destino):
+    """Cambia de pantalla antes de dibujar el menú (evita tener que dar dos clics)."""
+    ss.pagina = destino
+
+
+def cerrar_sesion():
+    ss.usuario, ss.pagina = None, "Inicio"
 ss.setdefault("ticket", None)
 
 
@@ -48,9 +57,7 @@ def elegir_vehiculo(clave):
     df = vehiculos.listar(motor, ss.usuario["id_usuario"])
     if df.empty:
         st.info("Primero registre un vehículo en **Mis vehículos**.")
-        if st.button("Ir a Mis vehículos", key=f"ir_{clave}"):
-            ss.pagina = "Mis vehículos"
-            st.rerun()
+        st.button("Ir a Mis vehículos", key=f"ir_{clave}", on_click=ir, args=("Mis vehículos",))
         return None
     opciones = {f"{r.placa} · {r.marca} {r.modelo}": r for r in df.itertuples()}
     return opciones[st.selectbox("Vehículo", list(opciones), key=clave)]
@@ -92,9 +99,7 @@ def pantalla_inicio():
                ("🚗 Mis vehículos", "Mis vehículos"), ("⭐ Plan premium", "Plan premium")]
     cols = st.columns(2)
     for i, (txt, destino) in enumerate(accesos):
-        if cols[i % 2].button(txt, width="stretch", key=f"m{i}"):
-            ss.pagina = destino
-            st.rerun()
+        cols[i % 2].button(txt, width="stretch", key=f"m{i}", on_click=ir, args=(destino,))
     al = alertas.listar(motor, ss.usuario["id_usuario"])
     if not al.empty:
         st.subheader("Últimas alertas")
@@ -348,8 +353,6 @@ if ss.usuario is None:
 else:
     with st.sidebar:
         st.markdown(f"**⛽ FuelTrack**  \n{ss.usuario['nombre']}")
-        ss.pagina = st.radio("Menú", list(PAGINAS), index=list(PAGINAS).index(ss.pagina))
-        if st.button("Cerrar sesión"):
-            ss.usuario, ss.pagina = None, "Inicio"
-            st.rerun()
+        st.radio("Menú", list(PAGINAS), key="pagina")
+        st.button("Cerrar sesión", on_click=cerrar_sesion)
     PAGINAS[ss.pagina]()
