@@ -150,3 +150,53 @@ def test_soporte(con_vehiculo):
     ok, radicado = soporte.registrar(motor, usuario["id_usuario"], "Otro", "La app no carga el mapa")
     assert ok and radicado == soporte.generar_radicado(datetime.now().year, 1)
     assert not soporte.registrar(motor, usuario["id_usuario"], "Otro", "corto")[0]
+
+
+# CP-RF04-01: el valor total se calcula si se deja en 0
+def test_total_calculado(con_vehiculo):
+    motor, _, idv = con_vehiculo
+    assert tanqueos.registrar(motor, idv, date(2026, 10, 1), 10, 15800, 0, 45500)["ok"]
+    assert tanqueos.historial(motor, idv).iloc[0]["valor_total"] == 158000
+
+
+# RF-04 (SC-06): registrar un tanqueo olvidado con fecha y km anteriores
+def test_tanqueo_olvidado(con_vehiculo):
+    motor, _, idv = con_vehiculo
+    tanqueos.registrar(motor, idv, date(2026, 10, 1), 10, 16000, 0, 45000)
+    tanqueos.registrar(motor, idv, date(2026, 10, 20), 10, 16000, 0, 45800)       # 80 km/gal (hueco)
+    r = tanqueos.registrar(motor, idv, date(2026, 10, 10), 10, 16000, 0, 45400)   # el olvidado
+    assert r["ok"] and r["rendimiento"] == 40.0
+    h = tanqueos.historial(motor, idv)
+    assert list(h["rendimiento_km_gal"].fillna(0)) == [0, 40.0, 40.0]               # el siguiente se recalculó
+    # fecha anterior pero km que no concuerda
+    r = tanqueos.registrar(motor, idv, date(2026, 9, 1), 10, 16000, 0, 45600)
+    assert not r["ok"] and "no concuerda" in r["mensaje"]
+    # km repetido
+    assert not tanqueos.registrar(motor, idv, date(2026, 10, 21), 10, 16000, 0, 45800)["ok"]
+
+
+# CP-RF13-01 / CP-RF13-02: editar y eliminar tanqueo con recálculo del rendimiento
+def test_editar_eliminar_tanqueo(con_vehiculo):
+    motor, _, idv = con_vehiculo
+    for d, km in [(1, 45000), (10, 45400), (20, 45800)]:
+        tanqueos.registrar(motor, idv, date(2026, 10, d), 10, 16000, 0, km)
+    h = tanqueos.historial(motor, idv)
+    id_medio = int(h.iloc[1]["id_tanqueo"])
+    ok, _ = tanqueos.editar(motor, id_medio, date(2026, 10, 10), 8, 16000, 0, 45400)    # galones mal digitados
+    assert ok
+    h = tanqueos.historial(motor, idv)
+    assert h.iloc[1]["rendimiento_km_gal"] == 50.0 and h.iloc[1]["valor_total"] == 128000
+    ok, msg = tanqueos.editar(motor, id_medio, date(2026, 10, 25), 8, 16000, 0, 45400)  # fecha no concuerda
+    assert not ok and "no concuerda" in msg
+    assert tanqueos.eliminar(motor, id_medio)[0]
+    h = tanqueos.historial(motor, idv)
+    assert len(h) == 2 and h.iloc[1]["rendimiento_km_gal"] == 80.0
+    assert not tanqueos.eliminar(motor, 9999)[0]
+
+
+# CP-RF12-02: historial de solicitudes
+def test_historial_soporte(con_vehiculo):
+    motor, usuario, _ = con_vehiculo
+    soporte.registrar(motor, usuario["id_usuario"], "Otro", "La app no carga el mapa")
+    soporte.registrar(motor, usuario["id_usuario"], "Pagos", "No se activó el plan premium")
+    assert len(soporte.listar(motor, usuario["id_usuario"])) == 2

@@ -95,7 +95,7 @@ pagos = Table(
 
 solicitudes_soporte = Table(
     "solicitudes_soporte", metadata,
-    Column("radicado", String(12), primary_key=True),
+    Column("radicado", String(13), primary_key=True),
     Column("id_usuario", Integer, ForeignKey("usuarios.id_usuario"), nullable=False),
     Column("categoria", String(30), nullable=False),
     Column("descripcion", Text, nullable=False),

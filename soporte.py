@@ -24,3 +24,14 @@ def registrar(motor, id_usuario, categoria, descripcion):
             radicado=radicado, id_usuario=id_usuario, categoria=categoria,
             descripcion=descripcion.strip(), estado="Abierta", fecha=datetime.now()))
     return True, radicado
+
+
+def listar(motor, id_usuario):
+    """Historial de solicitudes del conductor (más recientes primero)."""
+    import pandas as pd
+    with motor.connect() as con:
+        filas = con.execute(select(solicitudes_soporte.c.radicado, solicitudes_soporte.c.fecha,
+                                   solicitudes_soporte.c.categoria, solicitudes_soporte.c.estado)
+                            .where(solicitudes_soporte.c.id_usuario == id_usuario)
+                            .order_by(solicitudes_soporte.c.fecha.desc())).mappings().all()
+    return pd.DataFrame(filas)

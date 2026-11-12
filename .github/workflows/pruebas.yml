@@ -1,0 +1,13 @@
+# RNF-08: ejecuta las pruebas automáticas en cada publicación
+name: Pruebas automáticas
+on: [push]
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pytest pytest-cov
+      - run: pytest --cov=rendimiento --cov=alertas --cov=tanqueos --cov-fail-under=70
